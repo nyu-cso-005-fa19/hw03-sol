@@ -75,7 +75,7 @@ characters have weight 1.
 
 ![Huffman code tree](code_tree.svg)
 
-For a given encoding tree, we obtain the encoding of a character by
+For a given code tree, we obtain the encoding of a character by
 traversing the tree from the root to the leaf containing the
 character. Along the way, every time we take a branch to the left, we add
 0 to the representation and every time we take a branch to the right, we
@@ -125,9 +125,9 @@ void write_weight_table(char* weight_file_name, int* weights);
 That writes the weights given in the array `weights` into the file
 `weight_file_name`. The generated file should have one entry per line
 in the format `c:w` where `c` is an ASCII character and `w` is the
-weight of that character given in `weights`. You may omit
-characters whose weight is `0`. For example, for if
-the input file to be encoded contains the single line
+weight of that character given in `weights`. You may omit characters
+whose weight is `0`. For example, if the input file to be encoded
+contains the single line
 
 ```
 Hello class!
@@ -150,8 +150,9 @@ o:1
 s:2
 ```
 
-Note that here, the first two lines together give the weight of the
-newline character.
+Note that here, the first empty line is actually the newline character
+that is part of the first entry in the file. That is, the first two
+lines together give the weight of the newline character.
 
 Finally, write a function
 
@@ -205,7 +206,7 @@ code_tree* make_fork(code_tree* l, code_tree* r);
 
 that takes two code trees and combines them two a larger tree by
 connecting them to a newly allocated root node to be returned by the
-function. Make sure that the newly created root node has the correct weight.
+function. Make sure that the new root node has the correct weight.
 
 Next, write a function 
 
@@ -231,7 +232,7 @@ it. This can be done as follows:
    
 The final tree remaining in `T` is the desired code tree.
 
-Note that the operations we perform on the set `T` (adding elements,
+Note that the operations you need to perform on the set `T` (adding elements,
 removing elements with minimal weight) correspond to those supported by
 a [priority queue](https://en.wikipedia.org/wiki/Priority_queue) data
 structure. We will use a priority queue implementation based on
@@ -245,7 +246,7 @@ Finally, to clean up a heap-allocated code tree, write a function
 void delete_code_tree(code_tree* node);
 ```
 
-That recursively traverses the tree rooted at `node` and frees all its nodes.
+that recursively traverses the tree rooted at `node` and frees all its nodes.
 
 ### Part 3: Encoding (30 Points)
 
@@ -268,8 +269,9 @@ typedef struct code_s code;
 ``` 
 
 The code table is then an array of `code` values of length 128 - one
-per ASCII character. Here, the array `bits` stores the bit sequence
-encoding a given character `c` and `len` stores how many bits of the
+per ASCII character. Here, the array `bits` for the entry of a
+character `c` stores the bit sequence
+encoding `c` according to the code tree and `len` stores how many bits of the
 array are actually used for `c`'s code. We suggest to store the
 highest 8 bits of `c`'s code in `bits[0]` the next 8 bits in `bits[1]`
 if `len > 8`, etc. Essentially, use a big endian representation of the
@@ -317,10 +319,10 @@ That takes as input the name `in_file_name` of the file from which the
 code tree was constructed, the name `out_file_name` where the result
 of the encoding is to be stored, and the computed code table
 `tbl`. This function should then read the contents of `in_file_name`
-and write out its encoding byte-by-byte into the file `out_file_name`
-according to the computed code table. Note that you need to pack the
-codes of the encoded characters into bytes so that they form a
-continues bit stream. For instance, if the input file contains
+compute its encoding according to the computed code table, and write
+it out byte-by-byte into the file `out_file_name` . Note that you need
+to pack the codes of the encoded characters into bytes so that they
+form a continues bit stream. For instance, if the input file contains
 
 ```c
 Hello class!
@@ -328,10 +330,12 @@ Hello class!
 
 and the code table is as above, then the first byte written out to the
 output file should be `0xea`, encoding the first two characters `He`
-of the input. The second byte would be `0x5f` encoding the characters
-`llo`, etc. Note that the code of one character may span multiple
-bytes in the output. The final byte of the encoded output bit stream may not
-be fully utilized by the code of the final character in the input
+of the input. The second byte would be `0x5f` encoding the next three
+characters `llo`, etc. Note that the code of one character may span
+multiple bytes in the output.
+
+The final byte of the encoded output bit stream may not be
+fully utilized by the code of the final character in the input
 file. The remaining unutilized bits of that byte should be set
 to 0. In order to be able to distinguish these "fill bits" from the
 codes of characters that belong to the encoded bit stream, we
@@ -345,9 +349,10 @@ above is:
 ea 5f db 44 87 00 02
 ```
 
-Here the final `02` indicates that only the first 2 bits of the preceding byte
-`00` are still part of the encoding (these are the final two bits of
-the code `1100` for the terminating newline character in the input.
+Here the final byte `02` indicates that only the first 2 bits of the
+preceding byte `00` are still part of the encoding (these are the
+final two bits of the code `1100` for the final newline character in
+the input.
 
 Note that the output generated by your implementation may differ from
 the above as it depends on how the generated code tree looks
@@ -372,9 +377,9 @@ subtrees during the construction of the tree.
   on the command line for more information about `putc`.
 
 * To read the contents of the generated binary files when debugging
-  your code, I suggest to use the command line tool `od`. For
+  your code, we suggest to use the command line tool `od`. For
   instance, suppose that the output file for the encoded bit stream is
-  `out.bin`, then execute
+  `out.bin`. Then execute
   
   ```bash
   $ od -t x1 out.bin
@@ -382,13 +387,13 @@ subtrees during the construction of the tree.
   
   to obtain a dump of the contents of the file as a sequence of
   hexadecimal values encoding the contained sequence of bytes. Again,
-  execute
+  use
   
   ```bash
   $ man od
   ```
   
-  on the command line for more information.
+  on the command line for more information about `od`.
 
 
 ### Part 4: Decoding (20 Points)
@@ -426,8 +431,8 @@ fread(buf, 1, SIZE, file)
 
 will read up to `SIZE` bytes from `file` and store them in `buf`. The
 return value of the function is the actual number of bytes being
-read. A value smaller than `SIZE` indicates that the end of the file
-has been reached. Again, for more information execute
+read. A return value smaller than `SIZE` indicates that the end of the
+file has been reached. Again, for more information execute
 
 ```bash
 $ man fread
