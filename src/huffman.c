@@ -129,6 +129,7 @@ code_tree* make_leaf(char c, int w) {
   node->right = NULL;
   node->data = c;
   node->weight = w;
+  return node;
 }
 
 // Create a new internal node of a code tree with
@@ -139,6 +140,7 @@ code_tree* make_fork(code_tree* l, code_tree* r) {
   node->right = r;
   node->weight = weight_of_tree(l) + weight_of_tree(r);
   node->data = 0;
+  return node;
 }
 
 // Create a code tree from the given table of weights.
