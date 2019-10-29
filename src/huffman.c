@@ -123,7 +123,7 @@ int weight_of_tree(code_tree* n) {
 }
 
 // Create a new leaf node of a code tree.
-code_tree* make_leaf(char c, unsigned int w) {
+code_tree* make_leaf(char c, int w) {
   code_tree* node = malloc(sizeof(code_tree));
   node->left = NULL;
   node->right = NULL;

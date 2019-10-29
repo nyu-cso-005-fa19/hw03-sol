@@ -74,7 +74,6 @@ where `l` has weight 3, `s` has weight `2` and all other occurring
 characters have weight 1.
 
 ![Huffman code tree](code_tree.svg)
-<img src="code_tree.svg">
 
 For a given encoding tree, we obtain the encoding of a character by
 traversing the tree from the root to the leaf containing the
@@ -93,9 +92,9 @@ sequence `111010100101` into `"Hell"`.
 
 Our goal in this homework is to write a fully functional command line
 application that encodes and decodes plain text files using Huffman
-coding, using an optimal coding tree for the given text file.
+coding, by constructing an optimal coding tree for the given text file.
 
-### Part 1: Calculating weights
+### Part 1: Calculating weights (15 Points)
 
 To calculate the coding tree for a given text file that we want to
 encode, we first need to calculate the weight for each ASCII character
@@ -126,7 +125,7 @@ void write_weight_table(char* weight_file_name, int* weights);
 That writes the weights given in the array `weights` into the file
 `weight_file_name`. The generated file should have one entry per line
 in the format `c:w` where `c` is an ASCII character and `w` is the
-weight of that character in `weights`. You may omit
+weight of that character given in `weights`. You may omit
 characters whose weight is `0`. For example, for if
 the input file to be encoded contains the single line
 
@@ -163,10 +162,10 @@ void read_weight_table(char* weight_file_name, int* weights);
 That takes the name of a file produces by your previous function and
 reads its contents back into the array `weights`.
 
-### Part 2: Building the code tree
+### Part 2: Building the code tree (15 Points)
 
 In this part, you will implement functions that construct the code
-tree given the weights calculated in Part 1.
+tree from the weights calculated in Part 1.
 
 We represent the nodes of the code tree in C using the following
 struct type:
@@ -185,7 +184,7 @@ typedef struct code_tree_s code_tree;
 First, write a function
 
 ```c
-code_tree* make_leaf(char c, unsigned int w);
+code_tree* make_leaf(char c, int w);
 ```
 
 that allocates a code tree node on the heap and initializes it as a
@@ -230,7 +229,7 @@ it. This can be done as follows:
    
    c. Add the resulting tree back to `T`.
    
-The final tree remaining in `T` is the code tree you want to return.
+The final tree remaining in `T` is the desired code tree.
 
 Note that the operations we perform on the set `T` (adding elements,
 removing elements with minimal weight) correspond to those supported by
@@ -248,7 +247,7 @@ void delete_code_tree(code_tree* node);
 
 That recursively traverses the tree rooted at `node` and frees all its nodes.
 
-### Part 3: Encoding
+### Part 3: Encoding (30 Points)
 
 To enable fast encoding of the input file into bit sequences, we
 compute a code table that maps each ASCII character to its encoded bit
@@ -265,16 +264,16 @@ struct code_s {
   int len;
 };
 
-typedef struct code_s code;
-```
+typedef struct code_s code; 
+``` 
 
-Here, the array `bits` stores the bit sequence encoding a given
-character `c` and `len` stores how many bits of the array are actually
-used by `c`'s encoding. We suggest to store the highest 8 bits of `c`'s
-encoding in `bits[0]` the next 8 bits in `bits[1]` if `len > 8`,
-etc. Essentially, using a big endian representation of the bit
-sequence. The code table is then an array of `code` values of
-length 128 - one per ASCII character.
+The code table is then an array of `code` values of length 128 - one
+per ASCII character. Here, the array `bits` stores the bit sequence
+encoding a given character `c` and `len` stores how many bits of the
+array are actually used for `c`'s code. We suggest to store the
+highest 8 bits of `c`'s code in `bits[0]` the next 8 bits in `bits[1]`
+if `len > 8`, etc. Essentially, use a big endian representation of the
+bit sequence.
 
 Write a function
 
@@ -289,8 +288,8 @@ with the appropriate entries. Feel free to introduce an auxiliary
 helper function for the traversal as you see fit.
 
 For example, for the code tree shown above, this function would
-populate the following entries in the table (using an in-order
-traversal of the tree):
+populate the following entries in the table (the given sequence would
+be produced by an in-order traversal of the tree):
 
 ```c
 tbl[97]  -> bits[0] = 0x00, len = 3 // c = 'a'
@@ -367,10 +366,10 @@ subtrees during the construction of the tree.
   (i.e. unsigned char) into the file `file`. Execute
   
   ```bash
-  man putc
+  $ man putc
   ```
   
-  on the command line for more information.
+  on the command line for more information about `putc`.
 
 * To read the contents of the generated binary files when debugging
   your code, I suggest to use the command line tool `od`. For
@@ -378,7 +377,7 @@ subtrees during the construction of the tree.
   `out.bin`, then execute
   
   ```bash
-  od -t x1 out.bin
+  $ od -t x1 out.bin
   ```
   
   to obtain a dump of the contents of the file as a sequence of
@@ -386,13 +385,13 @@ subtrees during the construction of the tree.
   execute
   
   ```bash
-  man od
+  $ man od
   ```
   
   on the command line for more information.
 
 
-### Part 4: Decoding
+### Part 4: Decoding (20 Points)
 
 Decoding is simpler than encoding. Write a function
 
@@ -400,14 +399,14 @@ Decoding is simpler than encoding. Write a function
 void decode(char* in_file_name, char* out_file_name, code_tree* root);
 ```
 
-that takes in `in_file_name` which now contains the name of the file
+that takes `in_file_name` which is now the name of the file
 containing the encoded bit stream, `out_file_name` which is the name
-of the file where the decoded plain text is to be written two, and
-`root` the root of the code tree that was used for generating
+of the file where the decoded plain text is to be written to, and
+`root` which is the root of the code tree that was used for generating
 `in_file_name`.
 
 The function should read in the contents of the file `in_file_name`, decode
-the contained bit sequence according to the given code tree, writing
+the contained bit sequence according to the given code tree, and write
 the decoded characters into the file `out_file_name`. Be careful that
 you detect in advance when the final byte of the input file is reached
 in order to know how many bits of the preceding byte are still part of
@@ -437,7 +436,7 @@ $ man fread
 Feel free to introduce auxiliary function for implementing the
 traversal of the code tree for the actual decoding.
 
-### Part 5: Putting it all together
+### Part 5: Putting it all together (10 Points)
 
 Finally, we put all the pieces together by implementing a `main`
 function for our command line application. The application should
@@ -467,8 +466,9 @@ that the two files are identical.
 
 Write an appropriate `main` function that implements this
 functionality. Make sure that your implementation handles invalid
-command line options robustly. E.g. the options `-e` and `-d` should
-be exclusive, etc.
+command line options robustly. E.g. detect missing command line
+arguments, make sure that the options `-e` and `-d` are not used
+together, etc.
 
 To simplify the parsing of command line arguments, I suggest to use
 the `getopt` function. Execute
@@ -479,8 +479,7 @@ $ man 3 getopt
 
 for more information or
 see
-[here](https://www.gnu.org/software/libc/manual/html_node/Getopt.html#Getopt) for
-a short tutorial.
+[this short tutorial](https://www.gnu.org/software/libc/manual/html_node/Getopt.html#Getopt).
 
 Don't forget to properly clean up after yourself (free all heap
 allocated data, close opened files, etc.).
