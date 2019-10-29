@@ -475,7 +475,7 @@ command line options robustly. E.g. detect missing command line
 arguments, make sure that the options `-e` and `-d` are not used
 together, etc.
 
-To simplify the parsing of command line arguments, I suggest to use
+To simplify the parsing of command line arguments, We suggest to use
 the `getopt` function. Execute
 
 ```bash
