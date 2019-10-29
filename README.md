@@ -1,7 +1,7 @@
 # Homework 3 (90 Points)
 
-The deadline for Homework 2 is Monday, October 21, 8pm. The late
-submission deadline is Monday, October 28, 8pm.
+The deadline for Homework 3 is Monday, November 11, 8pm. The late
+submission deadline is Monday, November 18, 8pm.
 
 ## Getting the code template
 
@@ -48,7 +48,6 @@ git commands. Though, please remember the rules for submitting
 solutions after the homework deadline has passed.
 
 
-
 ## Huffman Coding (90 Points)
 
 Huffman coding is an algorithm for compressing strings of
@@ -74,7 +73,8 @@ Hello class!
 where `l` has weight 3, `s` has weight `2` and all other occurring
 characters have weight 1.
 
-[code_tree.pdf](code_tree.pdf)
+![Huffman code tree](code_tree.svg)
+<img src="code_tree.svg">
 
 For a given encoding tree, we obtain the encoding of a character by
 traversing the tree from the root to the leaf containing the
