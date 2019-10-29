@@ -23,9 +23,9 @@ struct code_s {
 
 typedef struct code_s code;
 
-int weights[127] = {};
+int weights[128] = {};
 
-code ctable[127] = {};
+code ctable[128] = {};
 
 FILE* open_file(char* file_name, char* mode) {
   FILE* file = fopen(file_name, mode);
@@ -41,7 +41,7 @@ FILE* open_file(char* file_name, char* mode) {
 // The size of weights should be 128 (the number of ASCII characters).
 void count_occurrences(char* plain_file_name, int* weights) {
   
-  char buf[128];
+  char buf[127];
 
   FILE* file = open_file(plain_file_name, "r");
   
@@ -177,7 +177,7 @@ void delete_code_tree(code_tree* node) {
 
 void create_code_table_worker(code_tree* root, code* tbl, unsigned char* arr, int l) {
   if (root->left == NULL) {
-    assert (l < 128);
+    assert (l < 127);
 
     //printf("%c: ", root->data);
     unsigned char c = 0;
