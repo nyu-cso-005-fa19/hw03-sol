@@ -1,0 +1,12 @@
+**/*.rs.bk
+*~
+a.out
+huffman
+out.bin
+key.txt
+cmake_install.cmake
+CMakeFiles/
+CMakeCache.txt
+.idea/
+*.iml
+Makefile
