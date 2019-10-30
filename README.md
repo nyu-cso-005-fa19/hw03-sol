@@ -77,9 +77,9 @@ characters have weight 1.
 
 For a given code tree, we obtain the encoding of a character by
 traversing the tree from the root to the leaf containing the
-character. Along the way, every time we take a branch to the left, we add
+character. Along the way, every time we take a branch to the left, we append
 0 to the representation and every time we take a branch to the right, we
-add 1. Thus, the tree above encodes the character `'H'` as `1110` and
+append 1. Thus, the tree above encodes the character `'H'` as `1110` and
 the character `'l'` as `01`.
 
 Decoding a bit sequence begins at the root of the tree. We read the
@@ -204,7 +204,7 @@ implement a function
 code_tree* make_fork(code_tree* l, code_tree* r);
 ```
 
-that takes two code trees and combines them two a larger tree by
+that takes two code trees and combines them to a larger tree by
 connecting them to a newly allocated root node to be returned by the
 function. Make sure that the new root node has the correct weight.
 
