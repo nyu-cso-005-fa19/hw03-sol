@@ -36,12 +36,15 @@ FILE* open_file(char* file_name, char* mode) {
   return file;
 }
 
+// size of buffers used for reading from files
+#define SIZE 128
+
 // Count the number of occurrences of each ASCII character in the
 // file plain_file_name and store them in the array weights.
 // The size of weights should be 128 (the number of ASCII characters).
 void count_occurrences(char* plain_file_name, int* weights) {
   
-  char buf[127];
+  char buf[SIZE];
 
   FILE* file = open_file(plain_file_name, "r");
   
@@ -73,14 +76,13 @@ void write_weight_table(char* weight_file_name, int* weights) {
 void read_weight_table(char* weight_file_name, int* weights) {
   FILE* file = open_file(weight_file_name, "r");
 
-  char read_buffer[128];
+  char read_buffer[SIZE];
 
   while (fgets(read_buffer, sizeof(read_buffer), file)) {
     char* p = read_buffer;
 
     while (*p != '\0') {
       char c = *p;
-      //printf("Read: %c, %d\n", c, c);
 
       if (*p == '\n') {
         fgets(read_buffer, sizeof(read_buffer), file);
@@ -98,7 +100,6 @@ void read_weight_table(char* weight_file_name, int* weights) {
       p++;
 
       unsigned long l = strtoul(p, &p, 10);
-      //printf("Weight: %d\n", l);
 
       weights[c] = l;
       
@@ -155,15 +156,26 @@ code_tree* create_code_tree(int* weights) {
 
   code_tree* root = NULL;
 
-  if (minheap_get_count(heap) == 0) return root;
-  
-  while (minheap_get_count(heap) != 1) {
+  switch (minheap_get_count(heap)) {
+  case 0:
+    break;
+  case 1: {
+    // make sure there are at least two nodes in the tree
     code_tree* left = minheap_delete_min(heap);
-    code_tree* right = minheap_delete_min(heap);
+    code_tree* right = make_leaf(((unsigned char) left->data + 1) % 128, 1);
     root = make_fork(left, right);
-    minheap_add(heap, root, root->weight);
+    break;
   }
-  root = (code_tree*) minheap_delete_min(heap);
+  default: 
+    while (minheap_get_count(heap) != 1) {
+      code_tree* left = minheap_delete_min(heap);
+      code_tree* right = minheap_delete_min(heap);
+      root = make_fork(left, right);
+      minheap_add(heap, root, root->weight);
+    }
+    root = (code_tree*) minheap_delete_min(heap);
+  }
+  
   minheap_delete(heap);
   
   return root;
@@ -179,41 +191,34 @@ void delete_code_tree(code_tree* node) {
 
 void create_code_table_worker(code_tree* root, code* tbl, unsigned char* arr, int l) {
   if (root->left == NULL) {
-    assert (l < 127);
+    assert (l < 128);
 
-    //printf("%c: ", root->data);
-    unsigned char c = 0;
-    for (int i = 0; i < l; i++) {
-      //printf("%d", arr[i]);
-      c = c << 1 | arr[i];
-      if ((i + 1) % 8 == 0) {
-        tbl[root->data].bits[i / 8] = c;
-        c = 0;
-      }
-    }
-    //printf("\n");
-    if (l % 8 > 0) {
-      c = c << (8 - (l % 8));
-      tbl[root->data].bits[l / 8] = c;
+    // Copy arr into tbl[root->data].bits
+    for (int i = 0; i < l / 8 + 1; i++)
+      tbl[root->data].bits[i] = arr[i];
+
+    // Set unused bits in last byte to 0 -- not strictly needed
+    if (l % 8 != 0) {
+      for (int i = 0; i < 8 - (l % 8); i++)
+        tbl[root->data].bits[l / 8] &= ~(1 << i);
     }
     
-    //printf("%d: %x:%x, %d\n", root->data, *((u_int64_t*) tbl[root->data].bits), *((u_int64_t*) tbl[root->data].bits + 1), l);
-      
     tbl[root->data].len = l;
   } else {
-    if (root->weight > 0) {
-      arr[l] = 0;
-      create_code_table_worker(root->left, tbl, arr, l + 1);
-      arr[l] = 1;
-      create_code_table_worker(root->right, tbl, arr, l + 1);
-    }
+    // Set next bit to 0
+    arr[l / 8] &= ~(1 << (7 - (l % 8)));
+    create_code_table_worker(root->left, tbl, arr, l + 1);
+    // Set next bit to 1
+    arr[l / 8] |= 1 << (7 - (l % 8));
+    create_code_table_worker(root->right, tbl, arr, l + 1);
   }
 }
 
 // Populate the code table tbl with the codes represented by
 // the code tree rooted at r.
 void create_code_table(code_tree* r, code* tbl) {
-  unsigned char arr[128];
+  if (r == NULL) return;
+  unsigned char arr[16];
   create_code_table_worker(r, tbl, arr, 0);
 }
 
@@ -223,55 +228,45 @@ void encode(char* in_file_name, char* out_file_name, code* tbl) {
   FILE* ifile = open_file(in_file_name, "r");
   FILE* ofile = open_file(out_file_name, "wb");
   
-  char read_buffer[128];
+  char read_buffer[SIZE];
 
-  int buff_len = 0;
-  unsigned char buff = 0;
+  // next byte to be written
+  unsigned char next = 0;
+
+  // number of bits currently used in next
+  int next_len = 0;
   
   while (fgets(read_buffer, sizeof(read_buffer), ifile)) {
     for (int i = 0; read_buffer[i] != '\0'; ++i) {
+      // Get next character from input stream as well as its code
       char c = read_buffer[i];
-      //printf("Coding %c\n", c); 
       int len = tbl[c].len;
-      //printf("Len %d\n", len); 
       unsigned char* code = tbl[c].bits;
-      
-      int j = 0;
-      int curr = 0;
-      while (curr < len) {
-        unsigned char next = buff | (*(code + j) >> buff_len);
 
-        if (curr + 8 <= len + buff_len) {
+      // Write out code byte by byte
+      for (int curr = 0; curr < len; curr += 8) {
+        // pack as much of code[curr / 8] into next as possible 
+        next |= code[curr / 8] >> next_len;
+
+        // ready to write next byte ?
+        if (curr + 8 <= len + next_len) {
           putc(next, ofile);
-          //printf("Next byte: %x\n", next);
-          buff = *(code + j) << (8 - buff_len);
-          if (curr + 8 > len) {
-            buff_len = (len + buff_len) % 8;
-          }
-        } else if (buff_len + (len - curr) < 8) {
-          buff = next;
-          buff_len = buff_len + (len - curr);
-        }
-          
-        j++;
-        curr += 8;        
-      }
 
-      if (buff_len == 8) {
-        putc(buff, ofile);
-        //printf("Next byte: %2x\n", buff);
-        buff = 0;
-        buff_len = 0;
-      } else {
-        //printf("Buff: %2x\n", buff);
-        //printf("Buff len: %d\n", buff_len);
+          next = code[curr / 8] << (8 - next_len);
+          if (curr + 8 > len) {
+            next_len = (len + next_len) % 8;
+          }
+        } else {
+          next_len = next_len + (len - curr);
+        }
       }
     }
   }
 
-  if (buff_len > 0) {
-    putc(buff, ofile);
-    putc(buff_len, ofile);
+  // Write out remaining byte if anything left
+  if (next_len > 0) {
+    putc(next, ofile);
+    putc(next_len, ofile);
   } else {
     putc(8, ofile);
   }
@@ -298,46 +293,50 @@ code_tree* decode_byte(code_tree* root, FILE* ofile, code_tree* curr, unsigned c
   }
 }
 
-#define SIZE 4
-
 // Decode the contents of the file in_file_name using the given code tree
 // and write the resulting plain text into the file out_file_name.
 void decode(char* in_file_name, char* out_file_name, code_tree* root) {
   FILE* ifile = open_file(in_file_name, "rb");
   FILE* ofile = open_file(out_file_name, "w");
 
+  // Use two read buffers to detect when end of file has been reached
   unsigned char read_buffer1[SIZE];
   unsigned char read_buffer2[SIZE];
 
   unsigned char* buffer1 = read_buffer1;
   unsigned char* buffer2 = read_buffer2;
   
-  size_t size = fread(buffer1, 1, SIZE, ifile);
+  int size = fread(buffer1, 1, SIZE, ifile);
 
   code_tree* curr = root;
   
-  while (size > 0) {
+  while (size > 1) {
     char last_len = 8;
-    size_t size1 = size;
+    int size1 = size;
     if (size < SIZE) {
+      // Definitely reached end of input file in previous fread
       last_len = buffer1[size - 1];
       size1 = size - 1;
       size = 0;
     } else {
+      // Possibly more data to read
       size = fread(buffer2, 1, SIZE, ifile);
       if (size == 0) {
+        // Reached end of input in previous fread
         last_len = buffer1[SIZE - 1];
         size1 = size1 - 1;
+      } else if (size == 1) {
+        // Only final byte was left to be read
+        last_len = buffer2[0];
       }
     }
 
     for (int i = 0; i < size1 - 1; i++) {
-      //printf("Decoding byte: %x\n", buffer1[i]);
       curr = decode_byte(root, ofile, curr, buffer1[i], 8, 0);
     }
-    //printf("Decoding byte: %x\n", buffer1[size1 - 1]);
     curr = decode_byte(root, ofile, curr, buffer1[size1 - 1], 8, 8 - last_len);
-    
+
+    // Swap buffer pointers
     unsigned char* temp = buffer2;
     buffer2 = buffer1;
     buffer1 = temp;
@@ -351,7 +350,7 @@ void decode(char* in_file_name, char* out_file_name, code_tree* root) {
 #define ENCODE 1
 #define DECODE 2
 
-
+// Parse command line arguments
 int parse_params(int argc, char** argv, int* mode, char** in_file_name, char** weight_file_name, char** out_file_name) {
   char c = 0;
   while ((c = getopt (argc, argv, "e:d:w:o:")) != -1) {
@@ -444,7 +443,6 @@ int main(int argc, char** argv) {
   } else {
     read_weight_table(weight_file_name, weights);
     code_tree* root = create_code_tree(weights);
-    create_code_table(root, ctable);
     decode(in_file_name, out_file_name, root);
     delete_code_tree(root);
   }
